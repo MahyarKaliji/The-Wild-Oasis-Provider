@@ -1,4 +1,4 @@
-import supabase, { supabaseUrl } from "./supabase";
+import supabase from "./supabase";
 
 export async function login({ email, password }) {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -57,16 +57,23 @@ export async function updateCurrentUser({ password, fullName, avatar }) {
   // 2. Update the avatar image
 
   const fileName = `avatar-${data.user.id}-${Math.random()}`;
-  const { error: storageError } = supabase.storage
+  const { error: storageError } = await supabase.storage
     .from("avatars")
     .upload(fileName, avatar);
 
   if (storageError) throw new Error(storageError.message);
 
+  // get public url for the uploaded file (more reliable than building the URL manually)
+  const { data: publicUrlData } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(fileName);
+
+  const publicUrl = publicUrlData?.publicUrl;
+
   // 3. Update avatar in the user
   const { data: updatedUser, error: error2 } = await supabase.auth.updateUser({
     data: {
-      avatar: `${supabaseUrl}/storage/v1/object/public/avatars/${fileName}`,
+      avatar: publicUrl,
     },
   });
 
